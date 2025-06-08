@@ -104,8 +104,12 @@ template = """
 
 def get_round_data(tournament_ID, round_number):
     url = f"https://play.limitlesstcg.com/tournament/{tournament_ID}/pairings?round={round_number}"
-    response = requests.get(url)
-    if response.status_code != 200:
+    print("fetching url:", url)
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+    except Exception as e:
+        print(f"Error fetching round {round_number}: {e}")
         return []
 
     soup = BeautifulSoup(response.text, 'html.parser')
