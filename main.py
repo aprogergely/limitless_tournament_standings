@@ -3,12 +3,10 @@
 
 from flask import Flask, request, render_template_string
 from bs4 import BeautifulSoup, Tag
-from collections import defaultdict
 import requests
 import time
 import json
 import os
-from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
