@@ -2,6 +2,3 @@ requests
 flask
 beautifulsoup4
 gunicorn
-json
-time
-os
