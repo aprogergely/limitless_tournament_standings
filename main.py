@@ -217,6 +217,8 @@ def analyze_tournament_data(tournament_data):
         stats['min_score'] = stats['wins'] + stats['min_opp_winrate']
         stats['max_score'] = stats['wins'] + stats['unplayed'] + stats['max_opp_winrate']
 
+    player_stats.pop("nobody", None) # remove dummy player
+
     for player, stats in player_stats.items():
         min_score = stats['min_score']
         max_score = stats['max_score']
