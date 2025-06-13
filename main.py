@@ -184,6 +184,8 @@ def analyze_tournament_data(tournament_data):
             else:
                 player_stats[p1]['games_played'] += 1
                 player_stats[p2]['games_played'] += 1
+                player_stats[p1]['opponents'].append(p2)
+                player_stats[p2]['opponents'].append(p1)
                 if winner == "0":
                     player_stats[p1]['ties'] += 1
                     player_stats[p2]['ties'] += 1
@@ -228,15 +230,11 @@ def analyze_tournament_data(tournament_data):
             other_min = other_stats['min_score']
             other_max = other_stats['max_score']
 
-            if other_max < min_score:
-                continue  # can't beat player
-            else:
-                best_rank += 1
+            if other_max > min_score:
+                worst_rank += 1
 
             if other_min > max_score:
-                continue  # can't be beaten by player
-            else:
-                worst_rank += 1
+                best_rank += 1
 
         stats['best_rank'] = best_rank
         stats['worst_rank'] = worst_rank
