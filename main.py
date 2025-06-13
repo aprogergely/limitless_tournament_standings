@@ -73,18 +73,22 @@ template = """
         <table id="resultsTable" data-sort-dir="asc">
             <thead>
                 <tr>
-                    <th onclick="sortTable(0)">Player ID</th>
-                    <th onclick="sortTable(1)">Wins</th>
-                    <th onclick="sortTable(2)">Losses</th>
-                    <th onclick="sortTable(3)">Ties</th>
-                    <th onclick="sortTable(4)">Games Played</th>
-                    <th onclick="sortTable(5)">Min Opp Win%</th>
-                    <th onclick="sortTable(6)">Max Opp Win%</th>
+                    <th onclick="sortTable(0)">Best rank</th>
+                    <th onclick="sortTable(1)">Worst rank</th>
+                    <th onclick="sortTable(2)">Player ID</th>
+                    <th onclick="sortTable(3)">Wins</th>
+                    <th onclick="sortTable(4)">Losses</th>
+                    <th onclick="sortTable(5)">Ties</th>
+                    <th onclick="sortTable(6)">Games Played</th>
+                    <th onclick="sortTable(7)">Min Opp Win%</th>
+                    <th onclick="sortTable(8)">Max Opp Win%</th>
                 </tr>
             </thead>
             <tbody>
             {% for player, stats in results.items() %}
                 <tr>
+                    <td>{{ stats['best_rank'] }}</td>
+                    <td>{{ stats['worst_rank'] }}</td>
                     <td>{{ player }}</td>
                     <td>{{ stats['wins'] }}</td>
                     <td>{{ stats['losses'] }}</td>
@@ -121,6 +125,7 @@ def get_round_data(tournament_ID, round_number):
     for tr in table.find_all('tr'):
         match_id = tr.get('data-match')
         winner_id = tr.get('data-winner')
+        match_status = tr.get('data-completed')
         players = tr.find_all('td', class_=['player', 'player unl', 'player winner', 'player tie'])
 
         if len(players) == 1:
@@ -146,7 +151,7 @@ def get_round_data(tournament_ID, round_number):
                 'losses': int(players[1].get('data-losses', 0)),
                 'ties': int(players[1].get('data-ties', 0))
             }
-            matches.append({'match_id': match_id, 'winner_id': winner_id, 'players': [player1, player2]})
+            matches.append({'match_id': match_id, 'winner_id': winner_id, 'players': [player1, player2], 'status': match_status})
     return matches
 
 def ensure_player(player_id, player_stats):
@@ -170,28 +175,27 @@ def analyze_tournament_data(tournament_data):
             p1, p2 = match['players'][0]['id'], match['players'][1]['id']
             ensure_player(p1, player_stats)
             ensure_player(p2, player_stats)
-            winner = match['winner_id']
+            winner = match.get('winner_id')
+            status = match.get('status')
 
-            player_stats[p1]['games_played'] += 1
-            player_stats[p2]['games_played'] += 1
-            player_stats[p1]['opponents'].append(p2)
-            player_stats[p2]['opponents'].append(p1)
-
-            if winner == "0":
-                if counter == len(tournament_data):
-                    player_stats[p1]['games_played'] -= 1
-                    player_stats[p2]['games_played'] -= 1
-                    player_stats[p1]['unplayed'] += 1
-                    player_stats[p2]['unplayed'] += 1
-                else:
+            if status == "0":
+                player_stats[p1]['unplayed'] += 1
+                player_stats[p2]['unplayed'] += 1
+            else:
+                player_stats[p1]['games_played'] += 1
+                player_stats[p2]['games_played'] += 1
+                if winner == "0":
                     player_stats[p1]['ties'] += 1
                     player_stats[p2]['ties'] += 1
-            elif winner == p1:
-                player_stats[p1]['wins'] += 1
-                player_stats[p2]['losses'] += 1
-            elif winner == p2:
-                player_stats[p2]['wins'] += 1
-                player_stats[p1]['losses'] += 1
+                elif winner == "-1":
+                    player_stats[p1]['losses'] += 1
+                    player_stats[p2]['losses'] += 1
+                elif winner == p1:
+                    player_stats[p1]['wins'] += 1
+                    player_stats[p2]['losses'] += 1
+                elif winner == p2:
+                    player_stats[p2]['wins'] += 1
+                    player_stats[p1]['losses'] += 1
 
     for player, stats in player_stats.items():
         played = stats['games_played']
@@ -208,8 +212,36 @@ def analyze_tournament_data(tournament_data):
                     max_opp_wr.append(max_wr)
         stats['min_opp_winrate'] = sum(min_opp_wr) / max(len(min_opp_wr), 1)
         stats['max_opp_winrate'] = sum(max_opp_wr) / max(len(max_opp_wr), 1)
+        stats['min_score'] = stats['wins'] + stats['min_opp_winrate']
+        stats['max_score'] = stats['wins'] + stats['unplayed'] + stats['max_opp_winrate']
 
-    sorted_stats = dict(sorted(player_stats.items(), key=lambda x: (-x[1]['wins'], x[1]['losses'], -x[1]['min_opp_winrate'])))
+    for player, stats in player_stats.items():
+        min_score = stats['min_score']
+        max_score = stats['max_score']
+        
+        best_rank = 1  # Ranks are 1-indexed
+        worst_rank = 1
+
+        for other, other_stats in player_stats.items():
+            if other == player:
+                continue
+            other_min = other_stats['min_score']
+            other_max = other_stats['max_score']
+
+            if other_max < min_score:
+                continue  # can't beat player
+            else:
+                best_rank += 1
+
+            if other_min > max_score:
+                continue  # can't be beaten by player
+            else:
+                worst_rank += 1
+
+        stats['best_rank'] = best_rank
+        stats['worst_rank'] = worst_rank
+
+    sorted_stats = dict(sorted(player_stats.items(), key=lambda x: (-x[1]['min_score'])))
     return sorted_stats
 
 def scrape_and_cache(tournament_id):
