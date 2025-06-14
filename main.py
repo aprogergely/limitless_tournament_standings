@@ -244,7 +244,7 @@ def analyze_tournament_data(tournament_data):
         # round up to the nearest whole number
         stats['worst_rank'] = int(worst_rank + 0.9)
 
-    sorted_stats = dict(sorted(player_stats.items(), key=lambda x: (-x[1]['min_score'])))
+    sorted_stats = dict(sorted(player_stats.items(), key=lambda x: (-x[1]['wins'], x[1]['losses'], -x[1]['min_opp_winrate'])))
     return sorted_stats
 
 def scrape_and_cache(tournament_id):
