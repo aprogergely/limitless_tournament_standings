@@ -232,10 +232,10 @@ def analyze_tournament_data(tournament_data):
             other_min = other_stats['min_score']
             other_max = other_stats['max_score_1']
 
-            if other_max >= min_score:
+            if other_max + other_stats['unplayed'] >= min_score:
                 worst_rank += 1
-            elif other_max + other_stats['unplayed'] >= min_score:
-                worst_rank += 0.5
+                if other_stats['wins'] < stats['wins']:
+                    worst_rank -= 0.5
 
             if other_min > max_score:
                 best_rank += 1
