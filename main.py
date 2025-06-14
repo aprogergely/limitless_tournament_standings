@@ -177,6 +177,8 @@ def analyze_tournament_data(tournament_data):
             ensure_player(p2, player_stats)
             winner = match.get('winner_id')
             status = match.get('status')
+            player_stats[p1]['opponents'].append(p2)
+            player_stats[p2]['opponents'].append(p1)
 
             if status == "0":
                 player_stats[p1]['unplayed'] += 1
@@ -184,8 +186,6 @@ def analyze_tournament_data(tournament_data):
             else:
                 player_stats[p1]['games_played'] += 1
                 player_stats[p2]['games_played'] += 1
-                player_stats[p1]['opponents'].append(p2)
-                player_stats[p2]['opponents'].append(p1)
                 if winner == "0":
                     player_stats[p1]['ties'] += 1
                     player_stats[p2]['ties'] += 1
