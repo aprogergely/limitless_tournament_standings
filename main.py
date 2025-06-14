@@ -215,14 +215,14 @@ def analyze_tournament_data(tournament_data):
         stats['min_opp_winrate'] = sum(min_opp_wr) / max(len(min_opp_wr), 1)
         stats['max_opp_winrate'] = sum(max_opp_wr) / max(len(max_opp_wr), 1)
         stats['min_score'] = stats['wins'] + stats['min_opp_winrate']
-        stats['max_score'] = stats['wins'] + stats['unplayed'] + stats['max_opp_winrate']
+        stats['max_score_1'] = stats['wins'] + stats['max_opp_winrate']
 
     player_stats.pop("nobody", None) # remove dummy player
 
     for player, stats in player_stats.items():
         min_score = stats['min_score']
-        max_score = stats['max_score']
-        
+        max_score = stats['max_score_1'] + stats['unplayed']
+
         best_rank = 1  # Ranks are 1-indexed
         worst_rank = 1
 
@@ -230,16 +230,19 @@ def analyze_tournament_data(tournament_data):
             if other == player:
                 continue
             other_min = other_stats['min_score']
-            other_max = other_stats['max_score']
+            other_max = other_stats['max_score_1']
 
             if other_max >= min_score:
                 worst_rank += 1
+            elif other_max + other_stats['unplayed'] >= min_score:
+                worst_rank += 0.5
 
             if other_min > max_score:
                 best_rank += 1
 
         stats['best_rank'] = best_rank
-        stats['worst_rank'] = worst_rank
+        # round up to the nearest whole number
+        stats['worst_rank'] = int(worst_rank + 0.9)
 
     sorted_stats = dict(sorted(player_stats.items(), key=lambda x: (-x[1]['min_score'])))
     return sorted_stats
