@@ -136,7 +136,7 @@ def get_round_data(tournament_ID, round_number):
                 'ties': int(players[0].get('data-ties', 0))
             }
             player2 = {'id': "nobody", 'wins': 0, 'losses': 0, 'ties': 0}
-            matches.append({'match_id': match_id, 'winner_id': winner_id, 'players': [player1, player2]})
+            matches.append({'match_id': match_id, 'winner_id': winner_id, 'players': [player1, player2], 'status': match_status})
 
         elif len(players) == 2:
             player1 = {
@@ -162,15 +162,14 @@ def ensure_player(player_id, player_stats):
             "unplayed": 0,
             "ties": 0,
             "games_played": 0,
-            "opponents": []
+            "opponents": [],
+            "currently_playing": []
         }
 
 def analyze_tournament_data(tournament_data):
     player_stats = {}
-    counter = 0
 
     for round_data in tournament_data.values():
-        counter += 1
         for match in round_data:
             p1, p2 = match['players'][0]['id'], match['players'][1]['id']
             ensure_player(p1, player_stats)
@@ -183,6 +182,8 @@ def analyze_tournament_data(tournament_data):
             if status == "0":
                 player_stats[p1]['unplayed'] += 1
                 player_stats[p2]['unplayed'] += 1
+                player_stats[p1]['currently_playing'].append(p2)
+                player_stats[p2]['currently_playing'].append(p1)
             else:
                 player_stats[p1]['games_played'] += 1
                 player_stats[p2]['games_played'] += 1
@@ -226,18 +227,31 @@ def analyze_tournament_data(tournament_data):
         best_rank = 1  # Ranks are 1-indexed
         worst_rank = 1
 
-        for other, other_stats in player_stats.items():
-            if other == player:
+        for other_player, other_player_stats in player_stats.items():
+            # compare with other players to see who could have a better/worse rank
+            if other_player == player:
                 continue
-            other_min = other_stats['min_score']
-            other_max = other_stats['max_score_1']
+            other_player_min = other_player_stats['min_score']
+            other_player_max = other_player_stats['max_score_1']
 
-            if other_max + other_stats['unplayed'] >= min_score:
+            if other_player_max >= min_score: # can catch up with tiebreakers even if they lose their unplayed games
                 worst_rank += 1
-                if other_stats['wins'] < stats['wins']:
-                    worst_rank -= 0.5
+            elif other_player_max + other_player_stats['unplayed'] >= min_score: # can only catch up if they win their unplayed games
+                increment = 1
+                # check who they have unplayed games against
+                for opp_of_other_player in other_player_stats['currently_playing']:
+                    if opp_of_other_player == player:
+                        continue # already handled by main comparison
+                    opp_stats = player_stats.get(opp_of_other_player)
+                    if not opp_stats:
+                        continue
+                    # only consider this match if opp also needs to wins to pass "player"
+                    if opp_stats['max_score_1'] + opp_stats['unplayed'] >= min_score and opp_stats['max_score_1'] < min_score:
+                        increment = 0.5  # only one can win
+                        break
+                worst_rank += increment
 
-            if other_min > max_score:
+            if other_player_min > max_score:
                 best_rank += 1
 
         stats['best_rank'] = best_rank
